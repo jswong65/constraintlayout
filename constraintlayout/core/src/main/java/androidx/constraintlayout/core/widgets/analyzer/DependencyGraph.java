@@ -40,7 +40,7 @@ import java.util.HashSet;
 
 public class DependencyGraph {
     private static final boolean USE_GROUPS = true;
-    private ConstraintWidgetContainer container;
+    private ConstraintWidgetContainer mWidgetContainer;
     private boolean mNeedBuildGraph = true;
     private boolean mNeedRedoMeasures = true;
     private ConstraintWidgetContainer mContainer;
@@ -50,7 +50,7 @@ public class DependencyGraph {
     private ArrayList<RunGroup> mRunGroups = new ArrayList<>();
 
     public DependencyGraph(ConstraintWidgetContainer container) {
-        this.container = container;
+        this.mWidgetContainer = container;
         mContainer = container;
     }
 
@@ -85,7 +85,7 @@ public class DependencyGraph {
 
             if (USE_GROUPS) {
                 boolean hasBarrier = false;
-                for (ConstraintWidget widget : container.mChildren) {
+                for (ConstraintWidget widget : mWidgetContainer.mChildren) {
                     widget.isTerminalWidget[HORIZONTAL] = true;
                     widget.isTerminalWidget[VERTICAL] = true;
                     if (widget instanceof Barrier) {
@@ -112,16 +112,16 @@ public class DependencyGraph {
         optimizeWrap &= USE_GROUPS;
 
         if (mNeedBuildGraph || mNeedRedoMeasures) {
-            for (ConstraintWidget widget : container.mChildren) {
+            for (ConstraintWidget widget : mWidgetContainer.mChildren) {
                 widget.ensureWidgetRuns();
                 widget.measured = false;
                 widget.mHorizontalRun.reset();
                 widget.mVerticalRun.reset();
             }
-            container.ensureWidgetRuns();
-            container.measured = false;
-            container.mHorizontalRun.reset();
-            container.mVerticalRun.reset();
+            mWidgetContainer.ensureWidgetRuns();
+            mWidgetContainer.measured = false;
+            mWidgetContainer.mHorizontalRun.reset();
+            mWidgetContainer.mVerticalRun.reset();
             mNeedRedoMeasures = false;
         }
 
@@ -130,23 +130,23 @@ public class DependencyGraph {
             return false;
         }
 
-        container.setX(0);
-        container.setY(0);
+        mWidgetContainer.setX(0);
+        mWidgetContainer.setY(0);
 
         ConstraintWidget.DimensionBehaviour originalHorizontalDimension =
-                container.getDimensionBehaviour(HORIZONTAL);
+                mWidgetContainer.getDimensionBehaviour(HORIZONTAL);
         ConstraintWidget.DimensionBehaviour originalVerticalDimension =
-                container.getDimensionBehaviour(VERTICAL);
+                mWidgetContainer.getDimensionBehaviour(VERTICAL);
 
         if (mNeedBuildGraph) {
             buildGraph();
         }
 
-        int x1 = container.getX();
-        int y1 = container.getY();
+        int x1 = mWidgetContainer.getX();
+        int y1 = mWidgetContainer.getY();
 
-        container.mHorizontalRun.start.resolve(x1);
-        container.mVerticalRun.start.resolve(y1);
+        mWidgetContainer.mHorizontalRun.start.resolve(x1);
+        mWidgetContainer.mVerticalRun.start.resolve(y1);
 
         // Let's do the easy steps first -- anything that can be immediately measured
         // Whatever is left for the dimension will be match_constraints.
@@ -165,14 +165,14 @@ public class DependencyGraph {
             }
 
             if (optimizeWrap && originalHorizontalDimension == WRAP_CONTENT) {
-                container.setHorizontalDimensionBehaviour(FIXED);
-                container.setWidth(computeWrap(container, HORIZONTAL));
-                container.mHorizontalRun.mDimension.resolve(container.getWidth());
+                mWidgetContainer.setHorizontalDimensionBehaviour(FIXED);
+                mWidgetContainer.setWidth(computeWrap(mWidgetContainer, HORIZONTAL));
+                mWidgetContainer.mHorizontalRun.mDimension.resolve(mWidgetContainer.getWidth());
             }
             if (optimizeWrap && originalVerticalDimension == WRAP_CONTENT) {
-                container.setVerticalDimensionBehaviour(FIXED);
-                container.setHeight(computeWrap(container, VERTICAL));
-                container.mVerticalRun.mDimension.resolve(container.getHeight());
+                mWidgetContainer.setVerticalDimensionBehaviour(FIXED);
+                mWidgetContainer.setHeight(computeWrap(mWidgetContainer, VERTICAL));
+                mWidgetContainer.mVerticalRun.mDimension.resolve(mWidgetContainer.getHeight());
             }
         }
 
@@ -181,21 +181,21 @@ public class DependencyGraph {
         // Now, depending on our own dimension behavior, we may want to solve
         // one dimension before the other
 
-        if (container.mListDimensionBehaviors[HORIZONTAL]
+        if (mWidgetContainer.mListDimensionBehaviors[HORIZONTAL]
                     == ConstraintWidget.DimensionBehaviour.FIXED
-                || container.mListDimensionBehaviors[HORIZONTAL]
+                || mWidgetContainer.mListDimensionBehaviors[HORIZONTAL]
                     == ConstraintWidget.DimensionBehaviour.MATCH_PARENT) {
 
             // solve horizontal dimension
-            int x2 = x1 + container.getWidth();
-            container.mHorizontalRun.end.resolve(x2);
-            container.mHorizontalRun.mDimension.resolve(x2 - x1);
+            int x2 = x1 + mWidgetContainer.getWidth();
+            mWidgetContainer.mHorizontalRun.end.resolve(x2);
+            mWidgetContainer.mHorizontalRun.mDimension.resolve(x2 - x1);
             measureWidgets();
-            if (container.mListDimensionBehaviors[VERTICAL] == FIXED
-                    || container.mListDimensionBehaviors[VERTICAL] == MATCH_PARENT) {
-                int y2 = y1 + container.getHeight();
-                container.mVerticalRun.end.resolve(y2);
-                container.mVerticalRun.mDimension.resolve(y2 - y1);
+            if (mWidgetContainer.mListDimensionBehaviors[VERTICAL] == FIXED
+                    || mWidgetContainer.mListDimensionBehaviors[VERTICAL] == MATCH_PARENT) {
+                int y2 = y1 + mWidgetContainer.getHeight();
+                mWidgetContainer.mVerticalRun.end.resolve(y2);
+                mWidgetContainer.mVerticalRun.mDimension.resolve(y2 - y1);
             }
             measureWidgets();
             checkRoot = true;
@@ -205,7 +205,7 @@ public class DependencyGraph {
 
         // Let's apply what we did resolve
         for (WidgetRun run : mRuns) {
-            if (run.mWidget == container && !run.mResolved) {
+            if (run.mWidget == mWidgetContainer && !run.mResolved) {
                 continue;
             }
             run.applyToWidget();
@@ -213,7 +213,7 @@ public class DependencyGraph {
 
         boolean allResolved = true;
         for (WidgetRun run : mRuns) {
-            if (!checkRoot && run.mWidget == container) {
+            if (!checkRoot && run.mWidget == mWidgetContainer) {
                 continue;
             }
             if (!run.start.resolved) {
@@ -231,8 +231,8 @@ public class DependencyGraph {
             }
         }
 
-        container.setHorizontalDimensionBehaviour(originalHorizontalDimension);
-        container.setVerticalDimensionBehaviour(originalVerticalDimension);
+        mWidgetContainer.setHorizontalDimensionBehaviour(originalHorizontalDimension);
+        mWidgetContainer.setVerticalDimensionBehaviour(originalVerticalDimension);
 
         return allResolved;
     }
@@ -244,7 +244,7 @@ public class DependencyGraph {
      */
     public boolean directMeasureSetup(boolean optimizeWrap) {
         if (mNeedBuildGraph) {
-            for (ConstraintWidget widget : container.mChildren) {
+            for (ConstraintWidget widget : mWidgetContainer.mChildren) {
                 widget.ensureWidgetRuns();
                 widget.measured = false;
                 widget.mHorizontalRun.mDimension.resolved = false;
@@ -254,14 +254,14 @@ public class DependencyGraph {
                 widget.mVerticalRun.mResolved = false;
                 widget.mVerticalRun.reset();
             }
-            container.ensureWidgetRuns();
-            container.measured = false;
-            container.mHorizontalRun.mDimension.resolved = false;
-            container.mHorizontalRun.mResolved = false;
-            container.mHorizontalRun.reset();
-            container.mVerticalRun.mDimension.resolved = false;
-            container.mVerticalRun.mResolved = false;
-            container.mVerticalRun.reset();
+            mWidgetContainer.ensureWidgetRuns();
+            mWidgetContainer.measured = false;
+            mWidgetContainer.mHorizontalRun.mDimension.resolved = false;
+            mWidgetContainer.mHorizontalRun.mResolved = false;
+            mWidgetContainer.mHorizontalRun.reset();
+            mWidgetContainer.mVerticalRun.mDimension.resolved = false;
+            mWidgetContainer.mVerticalRun.mResolved = false;
+            mWidgetContainer.mVerticalRun.reset();
             buildGraph();
         }
 
@@ -270,10 +270,10 @@ public class DependencyGraph {
             return false;
         }
 
-        container.setX(0);
-        container.setY(0);
-        container.mHorizontalRun.start.resolve(0);
-        container.mVerticalRun.start.resolve(0);
+        mWidgetContainer.setX(0);
+        mWidgetContainer.setY(0);
+        mWidgetContainer.mHorizontalRun.start.resolve(0);
+        mWidgetContainer.mVerticalRun.start.resolve(0);
         return true;
     }
 
@@ -287,12 +287,12 @@ public class DependencyGraph {
         optimizeWrap &= USE_GROUPS;
 
         ConstraintWidget.DimensionBehaviour originalHorizontalDimension =
-                container.getDimensionBehaviour(HORIZONTAL);
+                mWidgetContainer.getDimensionBehaviour(HORIZONTAL);
         ConstraintWidget.DimensionBehaviour originalVerticalDimension =
-                container.getDimensionBehaviour(VERTICAL);
+                mWidgetContainer.getDimensionBehaviour(VERTICAL);
 
-        int x1 = container.getX();
-        int y1 = container.getY();
+        int x1 = mWidgetContainer.getX();
+        int y1 = mWidgetContainer.getY();
 
         // If we have to support wrap, let's see if we can compute it directly
         if (optimizeWrap && (originalHorizontalDimension == WRAP_CONTENT
@@ -307,15 +307,15 @@ public class DependencyGraph {
 
             if (orientation == HORIZONTAL) {
                 if (optimizeWrap && originalHorizontalDimension == WRAP_CONTENT) {
-                    container.setHorizontalDimensionBehaviour(FIXED);
-                    container.setWidth(computeWrap(container, HORIZONTAL));
-                    container.mHorizontalRun.mDimension.resolve(container.getWidth());
+                    mWidgetContainer.setHorizontalDimensionBehaviour(FIXED);
+                    mWidgetContainer.setWidth(computeWrap(mWidgetContainer, HORIZONTAL));
+                    mWidgetContainer.mHorizontalRun.mDimension.resolve(mWidgetContainer.getWidth());
                 }
             } else {
                 if (optimizeWrap && originalVerticalDimension == WRAP_CONTENT) {
-                    container.setVerticalDimensionBehaviour(FIXED);
-                    container.setHeight(computeWrap(container, VERTICAL));
-                    container.mVerticalRun.mDimension.resolve(container.getHeight());
+                    mWidgetContainer.setVerticalDimensionBehaviour(FIXED);
+                    mWidgetContainer.setHeight(computeWrap(mWidgetContainer, VERTICAL));
+                    mWidgetContainer.mVerticalRun.mDimension.resolve(mWidgetContainer.getHeight());
                 }
             }
         }
@@ -326,19 +326,19 @@ public class DependencyGraph {
         // one dimension before the other
 
         if (orientation == HORIZONTAL) {
-            if (container.mListDimensionBehaviors[HORIZONTAL] == FIXED
-                    || container.mListDimensionBehaviors[HORIZONTAL] == MATCH_PARENT) {
-                int x2 = x1 + container.getWidth();
-                container.mHorizontalRun.end.resolve(x2);
-                container.mHorizontalRun.mDimension.resolve(x2 - x1);
+            if (mWidgetContainer.mListDimensionBehaviors[HORIZONTAL] == FIXED
+                    || mWidgetContainer.mListDimensionBehaviors[HORIZONTAL] == MATCH_PARENT) {
+                int x2 = x1 + mWidgetContainer.getWidth();
+                mWidgetContainer.mHorizontalRun.end.resolve(x2);
+                mWidgetContainer.mHorizontalRun.mDimension.resolve(x2 - x1);
                 checkRoot = true;
             }
         } else {
-            if (container.mListDimensionBehaviors[VERTICAL] == FIXED
-                    || container.mListDimensionBehaviors[VERTICAL] == MATCH_PARENT) {
-                int y2 = y1 + container.getHeight();
-                container.mVerticalRun.end.resolve(y2);
-                container.mVerticalRun.mDimension.resolve(y2 - y1);
+            if (mWidgetContainer.mListDimensionBehaviors[VERTICAL] == FIXED
+                    || mWidgetContainer.mListDimensionBehaviors[VERTICAL] == MATCH_PARENT) {
+                int y2 = y1 + mWidgetContainer.getHeight();
+                mWidgetContainer.mVerticalRun.end.resolve(y2);
+                mWidgetContainer.mVerticalRun.mDimension.resolve(y2 - y1);
                 checkRoot = true;
             }
         }
@@ -349,7 +349,7 @@ public class DependencyGraph {
             if (run.orientation != orientation) {
                 continue;
             }
-            if (run.mWidget == container && !run.mResolved) {
+            if (run.mWidget == mWidgetContainer && !run.mResolved) {
                 continue;
             }
             run.applyToWidget();
@@ -360,7 +360,7 @@ public class DependencyGraph {
             if (run.orientation != orientation) {
                 continue;
             }
-            if (!checkRoot && run.mWidget == container) {
+            if (!checkRoot && run.mWidget == mWidgetContainer) {
                 continue;
             }
             if (!run.start.resolved) {
@@ -377,8 +377,8 @@ public class DependencyGraph {
             }
         }
 
-        container.setHorizontalDimensionBehaviour(originalHorizontalDimension);
-        container.setVerticalDimensionBehaviour(originalVerticalDimension);
+        mWidgetContainer.setHorizontalDimensionBehaviour(originalHorizontalDimension);
+        mWidgetContainer.setVerticalDimensionBehaviour(originalVerticalDimension);
 
         return allResolved;
     }
@@ -605,7 +605,7 @@ public class DependencyGraph {
      * @TODO: add description
      */
     public void measureWidgets() {
-        for (ConstraintWidget widget : container.mChildren) {
+        for (ConstraintWidget widget : mWidgetContainer.mChildren) {
             if (widget.measured) {
                 continue;
             }
@@ -681,8 +681,8 @@ public class DependencyGraph {
             mGroups.clear();
             // Then get the horizontal and vertical groups
             RunGroup.index = 0;
-            findGroup(container.mHorizontalRun, HORIZONTAL, mGroups);
-            findGroup(container.mVerticalRun, VERTICAL, mGroups);
+            findGroup(mWidgetContainer.mHorizontalRun, HORIZONTAL, mGroups);
+            findGroup(mWidgetContainer.mVerticalRun, VERTICAL, mGroups);
         }
         mNeedBuildGraph = false;
     }
@@ -766,7 +766,7 @@ public class DependencyGraph {
                             RunGroup group) {
         WidgetRun run = node.mRun;
         if (run.mRunGroup != null
-                || run == container.mHorizontalRun || run == container.mVerticalRun) {
+                || run == mWidgetContainer.mHorizontalRun || run == mWidgetContainer.mVerticalRun) {
             return;
         }
 
